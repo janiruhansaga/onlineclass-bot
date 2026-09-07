@@ -3,6 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import { queryGroundedAI } from '../../src/services/aiEngine';
 import { INITIAL_FAQS } from '../../src/data/faqsData';
 
+// User Meta Credentials Fallback
+const DEFAULT_ACCESS_TOKEN = 'EAAV6PB2bsYYBSRE8FRINCvnQOgCNiT3zU5gfLdpZAdwsPtr6jvMWGGLmY8gD59ntJRtHSOLdH2VHmv33xnU6hGp2mh44nrZCmG7skA0bVrdi3ivkwxYsAMR3en3cSTSjXevd49YKulqhpfbL2Rj3tsArPKedZCXVMyoVQz0Fy2yduyzSrmGpj7WrtXnrUed29lc0BoP7kkSGyIHIcHsRql5vMHQLvs0E5SnKis7TiC8CYHO4GgOHXhdRy9KgHLCxuFOnctyaaomcP0Hn1D6ETjVPvVzNIZBtmKIZD';
+const DEFAULT_PHONE_NUMBER_ID = '1314283051764757';
+
 const supabaseUrl = process.env.SUPABASE_URL || 'https://ybylbiycwhyqihdhjgqb.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -29,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`[WhatsApp Webhook GET] Mode: ${mode}, Token: ${token}`);
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('[WhatsApp Webhook Verified] Successfully verified token!');
+      console.log('[WhatsApp Webhook Verified] Token matched successfully!');
       return res.status(200).send(String(challenge));
     } else {
       console.warn('[WhatsApp Webhook Verification Failed] Token mismatch.');
@@ -67,20 +71,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (userText) {
-        console.log(`[WhatsApp Webhook POST] From: ${customerName} (${formattedPhone}) | Text: "${userText}"`);
+        console.log(`[WhatsApp Incoming REAL] From: ${customerName} (${formattedPhone}) | Query: "${userText}"`);
 
         // Run AI Grounded Engine against 136 Approved FAQs
         const aiResult = queryGroundedAI(userText, INITIAL_FAQS, 55);
         const replyAnswer = aiResult.groundedAnswer;
 
-        // STEP A: IMMEDIATELY Send WhatsApp reply via Meta Cloud API
-        const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1314283051764757';
-        const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
+        // Meta Credentials (with guaranteed fallback token)
+        const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID || DEFAULT_PHONE_NUMBER_ID;
+        const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN || DEFAULT_ACCESS_TOKEN;
 
-        if (accessToken) {
-          try {
-            console.log(`[Meta Cloud API Outbound] Sending to ${cleanPhone}...`);
-            const metaRes = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+        console.log(`[Meta Cloud Outbound] Dispatching AI Answer to ${cleanPhone}...`);
+
+        try {
+          const metaRes = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              recipient_type: 'individual',
+              to: cleanPhone,
+              type: 'text',
+              text: { body: replyAnswer }
+            })
+          });
+
+          const metaJson = await metaRes.json();
+          console.log(`[Meta Outbound Result ${metaRes.status}]`, metaJson);
+
+          // If Meta returned a 24h session error or recipient error, fallback to template message
+          if (!metaRes.ok && metaJson.error?.code === 131047) {
+            console.warn('[Meta Session Expired] Attempting hello_world template fallback...');
+            await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -88,22 +113,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               },
               body: JSON.stringify({
                 messaging_product: 'whatsapp',
-                recipient_type: 'individual',
                 to: cleanPhone,
-                type: 'text',
-                text: { body: replyAnswer }
+                type: 'template',
+                template: { name: 'hello_world', language: { code: 'en_US' } }
               })
             });
-            const metaJson = await metaRes.json();
-            console.log(`[Meta Response Status: ${metaRes.status}]`, metaJson);
-          } catch (metaErr) {
-            console.error('[Meta Outbound Network Error]', metaErr);
           }
-        } else {
-          console.warn('[WhatsApp Warning] META_WHATSAPP_ACCESS_TOKEN is missing in process.env');
+        } catch (metaErr) {
+          console.error('[Meta Outbound Exception]', metaErr);
         }
 
-        // STEP B: Non-blocking Supabase Database Persistence
+        // Non-blocking Supabase Database Save
         if (supabase) {
           try {
             let { data: customer } = await supabase
