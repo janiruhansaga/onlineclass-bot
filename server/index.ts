@@ -457,3 +457,5 @@ app.listen(PORT, () => {
   console.log(`🌐 Dashboard UI URL:     http://localhost:${PORT}/`);
   console.log(`=======================================================`);
 });
+
+export default app;
