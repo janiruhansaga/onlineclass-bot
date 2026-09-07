@@ -1,27 +1,25 @@
 {
-  "routes": [
+  "cleanUrls": true,
+  "rewrites": [
     {
-      "src": "/api/webhooks/whatsapp",
-      "dest": "/api/webhooks/whatsapp.ts"
+      "source": "/api/webhooks/whatsapp",
+      "destination": "/api/webhooks/whatsapp"
     },
     {
-      "src": "/api/realtime/chats",
-      "dest": "/api/realtime/chats.ts"
+      "source": "/api/realtime/chats",
+      "destination": "/api/realtime/chats"
     },
     {
-      "src": "/api/realtime/messages",
-      "dest": "/api/realtime/messages.ts"
+      "source": "/api/realtime/messages",
+      "destination": "/api/realtime/messages"
     },
     {
-      "src": "/api/realtime/send-agent-reply",
-      "dest": "/api/realtime/send-agent-reply.ts"
+      "source": "/api/realtime/send-agent-reply",
+      "destination": "/api/realtime/send-agent-reply"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!api/|assets/).*)",
+      "destination": "/index.html"
     }
   ]
 }
