@@ -30,7 +30,7 @@ export const Header: React.FC = () => {
   const getBreadcrumbTitle = () => {
     switch (activeTab) {
       case 'dashboard': return 'Executive Dashboard';
-      case 'simulator': return 'WhatsApp Conversation Simulator';
+      case 'simulator': return 'WhatsApp Live Inbox & Bot Management Console';
       case 'playground': return 'AI Grounding Playground';
       case 'kb': return 'FAQ Knowledge Base (136 Approved FAQs)';
       case 'escalations': return 'Human Escalation Queue';

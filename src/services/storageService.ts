@@ -17,8 +17,8 @@ import { INITIAL_SEQUENCES } from '../data/mockSequences';
 const KEYS = {
   FAQS: 'onlineclass_faqs_v1',
   COURSES: 'onlineclass_courses_v1',
-  CHATS: 'onlineclass_chats_v2',
-  MESSAGES: 'onlineclass_messages_v2',
+  CHATS: 'onlineclass_chats_v3',
+  MESSAGES: 'onlineclass_messages_v3',
   ESCALATIONS: 'onlineclass_escalations_v1',
   LMS_LOGS: 'onlineclass_lms_logs_v1',
   SEQUENCES: 'onlineclass_sequences_v1',
