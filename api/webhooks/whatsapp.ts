@@ -1,10 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
 // Default Meta Credentials Fallback
 const DEFAULT_ACCESS_TOKEN = 'EAAV6PB2bsYYBSRE8FRINCvnQOgCNiT3zU5gfLdpZAdwsPtr6jvMWGGLmY8gD59ntJRtHSOLdH2VHmv33xnU6hGp2mh44nrZCmG7skA0bVrdi3ivkwxYsAMR3en3cSTSjXevd49YKulqhpfbL2Rj3tsArPKedZCXVMyoVQz0Fy2yduyzSrmGpj7WrtXnrUed29lc0BoP7kkSGyIHIcHsRql5vMHQLvs0E5SnKis7TiC8CYHO4GgOHXhdRy9KgHLCxuFOnctyaaomcP0Hn1D6ETjVPvVzNIZBtmKIZD';
 const DEFAULT_PHONE_NUMBER_ID = '1314283051764757';
 
-// 136 Approved FAQs Summary Table for Grounded Match
+// Approved FAQs Summary for Grounded AI Match
 const FAQS = [
   { q: "zoom link class today", a: "Live class links appear on your LMS Homepage 15 minutes before the session starts and are automatically sent to your WhatsApp batch group." },
   { q: "installments fee pay monthly", a: "Yes! We offer a 3-month or 6-month zero-interest installment plan for all diploma programs. The first installment is due upon registration." },
@@ -15,6 +13,7 @@ const FAQS = [
 ];
 
 function findAnswer(query: string): string {
+  if (!query) return "Thank you for contacting OnlineClass Support! How can we assist you today?";
   const q = query.toLowerCase();
   for (const faq of FAQS) {
     const keywords = faq.q.split(' ');
@@ -23,10 +22,10 @@ function findAnswer(query: string): string {
       return faq.a;
     }
   }
-  return `Thank you for contacting OnlineClass Support! We received your inquiry: "${query}". All course details, schedules, and LMS links are available on your student dashboard.`;
+  return `Thank you for contacting OnlineClass Support! We received your query: "${query}". All class details, Zoom links, and schedules are available on your student portal.`;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
@@ -36,16 +35,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // 1. GET Verification for Meta Cloud API
   if (req.method === 'GET') {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
+    const mode = req.query?.['hub.mode'];
+    const token = req.query?.['hub.verify_token'];
+    const challenge = req.query?.['hub.challenge'];
 
     const VERIFY_TOKEN = process.env.META_WHATSAPP_VERIFY_TOKEN || 'onlineclass_whatsapp_2026';
 
     console.log(`[WhatsApp Webhook GET] Mode: ${mode}, Token: ${token}`);
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('[WhatsApp Webhook Verified] Successfully verified Meta token!');
+      console.log('[WhatsApp Webhook Verified] Successfully verified token!');
       return res.status(200).send(String(challenge));
     } else {
       console.warn('[WhatsApp Webhook Verification Failed] Token mismatch.');
@@ -56,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 2. POST Incoming WhatsApp Message Event from Meta Cloud API
   if (req.method === 'POST') {
     try {
-      const body = req.body;
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
       if (!body || !body.object || !body.entry || !body.entry[0]?.changes?.[0]?.value) {
         return res.status(200).send('EVENT_RECEIVED');
       }
@@ -70,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const msg = messages[0];
-      const rawPhone = msg.from;
+      const rawPhone = msg.from || '';
       const cleanPhone = rawPhone.replace(/[^\d]/g, '');
       const customerName = contacts?.[0]?.profile?.name || cleanPhone;
       let userText = '';
@@ -81,7 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userText = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
       }
 
-      if (userText) {
+      if (userText && cleanPhone) {
         console.log(`[WhatsApp Incoming REAL] From: ${customerName} (${cleanPhone}) | Query: "${userText}"`);
 
         const answer = findAnswer(userText);
@@ -109,7 +108,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const metaJson = await metaRes.json();
           console.log(`[Meta Response Status ${metaRes.status}]`, metaJson);
 
-          // If Meta returns 24h session error (#131047), send hello_world template
           if (!metaRes.ok && metaJson.error?.code === 131047) {
             console.warn('[Meta Session Expired] Re-sending template message...');
             await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
