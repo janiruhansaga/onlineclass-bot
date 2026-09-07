@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { queryGroundedAI } from '../../src/services/aiEngine';
+import { INITIAL_FAQS } from '../../src/data/faqsData';
 
-// Initialize Supabase Client if credentials are present
 const supabaseUrl = process.env.SUPABASE_URL || 'https://ybylbiycwhyqihdhjgqb.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -17,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  // 1. GET Webhook Verification for Meta Cloud API Setup
+  // 1. GET Verification for Meta Cloud API
   if (req.method === 'GET') {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -28,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`[WhatsApp Webhook GET] Mode: ${mode}, Token: ${token}`);
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('[WhatsApp Webhook Verified] Verification successful!');
+      console.log('[WhatsApp Webhook Verified] Successfully verified token!');
       return res.status(200).send(String(challenge));
     } else {
       console.warn('[WhatsApp Webhook Verification Failed] Token mismatch.');
@@ -54,7 +55,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const msg = messages[0];
       const rawPhone = msg.from;
-      const formattedPhone = rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`;
+      const cleanPhone = rawPhone.replace(/[^\d]/g, '');
+      const formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone}`;
       const customerName = contacts?.[0]?.profile?.name || formattedPhone;
       let userText = '';
 
@@ -62,75 +64,95 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userText = msg.text?.body || '';
       } else if (msg.type === 'interactive') {
         userText = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
+      } else {
+        userText = `[Unsupported media type: ${msg.type}]`;
       }
 
       if (userText) {
-        console.log(`[WhatsApp Incoming REAL] From: ${customerName} (${formattedPhone}) | Text: "${userText}"`);
+        console.log(`[WhatsApp Webhook POST] From: ${customerName} (${formattedPhone}) | Text: "${userText}"`);
 
-        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const chatId = `CHAT-REAL-${rawPhone.replace(/[^\d]/g, '')}`;
+        // Run AI Grounded Engine against 136 Approved FAQs
+        const aiResult = queryGroundedAI(userText, INITIAL_FAQS, 55);
+        const replyAnswer = aiResult.groundedAnswer;
 
-        // Grounding Response (Default template or AI answer)
-        const replyText = `Hello! Thank you for contacting OnlineClass Support. We received your query: "${userText}". All class schedules, Zoom links, and course details are available on your student dashboard.`;
-
-        // Save incoming customer message & bot reply to Supabase if connected
+        // Save incoming customer message & bot reply to Supabase Database
         if (supabase) {
           try {
-            // Upsert Customer
-            const { data: customerData } = await supabase
+            // 1. Get or Create Customer
+            let { data: customer } = await supabase
               .from('customers')
-              .upsert({ phone_number: formattedPhone, display_name: customerName }, { onConflict: 'phone_number' })
               .select('id')
-              .single();
+              .eq('phone_number', formattedPhone)
+              .maybeSingle();
 
-            const customerId = customerData?.id;
+            if (!customer) {
+              const { data: newCust } = await supabase
+                .from('customers')
+                .insert({ phone_number: formattedPhone, display_name: customerName })
+                .select('id')
+                .single();
+              customer = newCust;
+            }
 
-            // Upsert Conversation
-            const { data: convData } = await supabase
-              .from('conversations')
-              .upsert(
-                {
-                  id: chatId.length === 36 ? chatId : undefined,
-                  status: 'ai_active',
-                  last_message_at: new Date().toISOString()
-                },
-                { onConflict: 'id' }
-              )
-              .select('id')
-              .single();
+            if (customer) {
+              // 2. Get or Create Conversation
+              let { data: conv } = await supabase
+                .from('conversations')
+                .select('id')
+                .eq('customer_id', customer.id)
+                .maybeSingle();
 
-            const conversationId = convData?.id || chatId;
+              if (!conv) {
+                const { data: newConv } = await supabase
+                  .from('conversations')
+                  .insert({
+                    customer_id: customer.id,
+                    status: aiResult.matched ? 'ai_active' : 'needs_review',
+                    ai_enabled: true,
+                    last_message_at: new Date().toISOString()
+                  })
+                  .select('id')
+                  .single();
+                conv = newConv;
+              } else {
+                await supabase
+                  .from('conversations')
+                  .update({ last_message_at: new Date().toISOString() })
+                  .eq('id', conv.id);
+              }
 
-            // Insert Incoming Customer Message
-            await supabase.from('messages').insert({
-              conversation_id: conversationId,
-              external_message_id: msg.id || `MSG-IN-${Date.now()}`,
-              direction: 'incoming',
-              sender_type: 'customer',
-              content: userText,
-              status: 'delivered'
-            });
+              if (conv) {
+                // 3. Save Student Incoming Message
+                await supabase.from('messages').insert({
+                  conversation_id: conv.id,
+                  external_message_id: msg.id || `MSG-IN-${Date.now()}`,
+                  direction: 'incoming',
+                  sender_type: 'customer',
+                  content: userText,
+                  status: 'delivered'
+                });
 
-            // Insert Outgoing AI Bot Message
-            await supabase.from('messages').insert({
-              conversation_id: conversationId,
-              external_message_id: `MSG-OUT-${Date.now()}`,
-              direction: 'outgoing',
-              sender_type: 'ai',
-              content: replyText,
-              status: 'sent'
-            });
+                // 4. Save AI Bot Outgoing Response
+                await supabase.from('messages').insert({
+                  conversation_id: conv.id,
+                  external_message_id: `MSG-OUT-${Date.now()}`,
+                  direction: 'outgoing',
+                  sender_type: 'ai',
+                  content: replyAnswer,
+                  status: 'sent'
+                });
+              }
+            }
           } catch (dbErr) {
-            console.error('[Supabase Save Exception]', dbErr);
+            console.error('[Supabase Webhook Save Exception]', dbErr);
           }
         }
 
-        // Dispatch reply to WhatsApp via Meta Cloud API
+        // Send WhatsApp reply via Meta Cloud API
         const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1314283051764757';
         const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
 
         if (accessToken) {
-          const cleanPhone = rawPhone.replace(/[^\d]/g, '');
           await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
             method: 'POST',
             headers: {
@@ -142,7 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               recipient_type: 'individual',
               to: cleanPhone,
               type: 'text',
-              text: { body: replyText }
+              text: { body: replyAnswer }
             })
           });
         }

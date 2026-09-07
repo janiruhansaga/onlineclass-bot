@@ -273,12 +273,91 @@ app.post('/api/webhooks/whatsapp', async (req: Request, res: Response) => {
 // =========================================================
 // REAL-TIME CHAT SYNC ENDPOINTS FOR DASHBOARD UI
 // =========================================================
-app.get('/api/realtime/chats', (req: Request, res: Response) => {
-  res.json({ chats: realTimeChats, escalations: escalationTickets });
+app.get('/api/realtime/chats', async (req: Request, res: Response) => {
+  const supabase = isSupabaseConnected() ? (await import('./services/supabaseClient')).getSupabase() : null;
+
+  if (supabase) {
+    try {
+      const { data: dbConvs } = await supabase
+        .from('conversations')
+        .select(`
+          id,
+          status,
+          ai_enabled,
+          last_message_at,
+          customer:customers (
+            phone_number,
+            display_name
+          )
+        `)
+        .order('last_message_at', { ascending: false });
+
+      if (dbConvs && dbConvs.length > 0) {
+        const chatsFromDb = dbConvs.map((conv: any) => {
+          const phone = conv.customer?.phone_number || '+94783351453';
+          const name = conv.customer?.display_name || phone;
+          return {
+            id: conv.id,
+            customerName: name,
+            phoneNumber: phone,
+            courseName: 'Online Class Student',
+            batch: 'Meta Cloud API Live',
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D9488&color=fff`,
+            lastMessage: 'Active Meta WhatsApp Chat Session',
+            lastMessageTime: new Date(conv.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            unreadCount: 0,
+            mode: conv.ai_enabled ? 'ai' : 'human',
+            status: conv.status,
+            tags: ['Real WhatsApp', 'Meta Cloud API'],
+            createdAt: new Date(conv.last_message_at).toISOString().split('T')[0]
+          };
+        });
+
+        return res.json({ chats: chatsFromDb, escalations: escalationTickets });
+      }
+    } catch (dbErr) {
+      console.error('[Supabase Fetch Chats Exception]', dbErr);
+    }
+  }
+
+  return res.json({ chats: realTimeChats, escalations: escalationTickets });
 });
 
-app.get('/api/realtime/messages', (req: Request, res: Response) => {
-  res.json({ messages: realTimeMessages });
+app.get('/api/realtime/messages', async (req: Request, res: Response) => {
+  const supabase = isSupabaseConnected() ? (await import('./services/supabaseClient')).getSupabase() : null;
+
+  if (supabase) {
+    try {
+      const { data: dbMsgs } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (dbMsgs && dbMsgs.length > 0) {
+        const messagesByChat: Record<string, any[]> = {};
+
+        dbMsgs.forEach((m: any) => {
+          const chatId = m.conversation_id;
+          if (!messagesByChat[chatId]) messagesByChat[chatId] = [];
+
+          messagesByChat[chatId].push({
+            id: m.id,
+            chatId: m.conversation_id,
+            sender: m.sender_type === 'customer' ? 'user' : m.sender_type === 'ai' ? 'bot' : 'agent',
+            text: m.content,
+            timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: m.status || 'delivered'
+          });
+        });
+
+        return res.json({ messages: messagesByChat });
+      }
+    } catch (dbErr) {
+      console.error('[Supabase Fetch Messages Exception]', dbErr);
+    }
+  }
+
+  return res.json({ messages: realTimeMessages });
 });
 
 app.post('/api/realtime/send-agent-reply', async (req: Request, res: Response) => {
