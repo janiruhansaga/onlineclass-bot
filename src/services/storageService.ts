@@ -15,7 +15,7 @@ import { INITIAL_CHATS, INITIAL_MESSAGES } from '../data/mockChats';
 import { INITIAL_SEQUENCES } from '../data/mockSequences';
 
 const KEYS = {
-  FAQS: 'onlineclass_faqs_v1',
+  FAQS: 'onlineclass_faqs_v2',
   COURSES: 'onlineclass_courses_v1',
   CHATS: 'onlineclass_chats_v3',
   MESSAGES: 'onlineclass_messages_v3',
