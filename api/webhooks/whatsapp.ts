@@ -236,7 +236,9 @@ export default async function handler(req: any, res: any) {
           const metaJson = await metaRes.json();
           console.log(`[Meta Response Status ${metaRes.status}]`, metaJson);
 
-          if (!metaRes.ok && metaJson.error?.code === 131047) {
+          if (!metaRes.ok && metaJson.error?.code === 131030) {
+            console.error(`[Meta Error 131030] Recipient ${cleanPhone} is not in Meta Developer Portal allowed recipient list! Please add ${cleanPhone} to Meta Developer Portal > WhatsApp > API Setup > To field.`);
+          } else if (!metaRes.ok && metaJson.error?.code === 131047) {
             console.warn('[Meta Session Expired] Re-sending template message...');
             await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
               method: 'POST',
