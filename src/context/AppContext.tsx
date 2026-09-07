@@ -111,10 +111,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (msgRes.ok) {
           const msgData = await msgRes.json();
           if (msgData.messages) {
-            setMessages((prev) => ({
-              ...prev,
-              ...msgData.messages
-            }));
+            setMessages((prev) => {
+              const updated = { ...prev };
+              Object.keys(msgData.messages).forEach((chatKey) => {
+                const existingList = updated[chatKey] || [];
+                const existingIds = new Set(existingList.map((m) => m.id));
+                const incomingList = msgData.messages[chatKey] || [];
+                const newOnly = incomingList.filter((m: ChatMessage) => !existingIds.has(m.id));
+                if (newOnly.length > 0) {
+                  updated[chatKey] = [...existingList, ...newOnly];
+                }
+              });
+              return updated;
+            });
           }
         }
       } catch (e) {
