@@ -17,6 +17,9 @@
       "dest": "/api/realtime/send-agent-reply.ts"
     },
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
