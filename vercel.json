@@ -1,8 +1,24 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
+      "src": "/api/webhooks/whatsapp",
+      "dest": "/api/webhooks/whatsapp.ts"
+    },
+    {
+      "src": "/api/realtime/chats",
+      "dest": "/api/realtime/chats.ts"
+    },
+    {
+      "src": "/api/realtime/messages",
+      "dest": "/api/realtime/messages.ts"
+    },
+    {
+      "src": "/api/realtime/send-agent-reply",
+      "dest": "/api/realtime/send-agent-reply.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
