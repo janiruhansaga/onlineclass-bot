@@ -24,7 +24,7 @@ export const Sidebar: React.FC = () => {
 
   const navItems: { id: NavigationTab; label: string; icon: React.ReactNode; badge?: string | number; badgeColor?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: 'simulator', label: 'Chat Simulator', icon: <MessageSquare className="w-5 h-5" />, badge: 'LIVE', badgeColor: 'bg-emerald-500' },
+    { id: 'simulator', label: 'WhatsApp Live Inbox', icon: <MessageSquare className="w-5 h-5" />, badge: 'LIVE', badgeColor: 'bg-emerald-500' },
     { id: 'playground', label: 'AI Playground', icon: <Sparkles className="w-5 h-5" /> },
     { id: 'kb', label: 'FAQ Base (136)', icon: <BookOpen className="w-5 h-5" />, badge: faqs.length, badgeColor: 'bg-cyan-500/20 text-cyan-300' },
     { id: 'escalations', label: 'Human Escalations', icon: <UserCheck className="w-5 h-5" />, badge: pendingEscalations > 0 ? pendingEscalations : undefined, badgeColor: 'bg-rose-500' },
