@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: onlineclass-bot
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: META_WHATSAPP_VERIFY_TOKEN
+        value: onlineclass_whatsapp_2026
+      - key: LMS_WEBHOOK_SECRET
+        value: lms_webhook_secret_key_2026
+      - key: META_WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: META_WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: META_WHATSAPP_BUSINESS_ACCOUNT_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
