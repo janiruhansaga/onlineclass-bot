@@ -69,57 +69,87 @@ Response Style Guidelines:
 // Gemini AI LLM Generator with Fallback
 async function generateGeminiResponse(userQuery: string): Promise<string> {
   if (GEMINI_API_KEY && !GEMINI_API_KEY.includes('placeholder')) {
-    try {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-      const res = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: SYSTEM_FAQS_CONTEXT },
-                { text: `Student Question: "${userQuery}"` }
-              ]
-            }
-          ]
-        })
-      });
+    const candidateModels = [
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-flash-latest',
+      'gemini-2.5-flash'
+    ];
 
-      const data = await res.json();
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (generatedText) {
-        return generatedText.trim();
+    for (const model of candidateModels) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+        const res = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: SYSTEM_FAQS_CONTEXT },
+                  { text: `Student Question: "${userQuery}"` }
+                ]
+              }
+            ]
+          })
+        });
+
+        clearTimeout(timeoutId);
+        const data = await res.json();
+        const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (generatedText) {
+          console.log(`[Gemini AI Success] Generated answer using model: ${model}`);
+          return generatedText.trim();
+        }
+      } catch (geminiErr) {
+        console.error(`[Gemini Model ${model} Exception]`, geminiErr);
       }
-    } catch (geminiErr) {
-      console.error('[Gemini API Exception]', geminiErr);
     }
   }
 
   // Fallback Local Sinhala/English Matcher
   const q = userQuery.toLowerCase();
-  const isSinhalaOrSinglish = /[\u0D80-\u0DFF]|\b(ekata|wenne|kawadada|koheda|pantiya|gewanna|thiyenne|gaththa|puluwanda|denda|sinhala)\b/i.test(userQuery);
+  const isSinhalaOrSinglish = /[\u0D80-\u0DFF]|\b(ekata|wenne|kawadada|koheda|pantiya|gewanna|thiyenne|gaththa|puluwanda|denda|sinhala|register|login|recording|paper|notes|fee|plan)\b/i.test(userQuery);
 
   if (q.includes('zoom') || q.includes('ලින්ක්') || q.includes('link')) {
     return isSinhalaOrSinglish
-      ? "ආයුබෝවන්! 📚 සජීවී පන්ති Zoom ලින්ක් එක පන්තිය ආරම්භ වීමට විනාඩි 15 කට පෙර ඔබේ LMS ප්‍රධාන පිටුවේ දර්ශනය වන අතර ඔබේ WhatsApp Group එකටද එවනු ලැබේ."
-      : "Live class links appear on your LMS Homepage 15 minutes before the session starts and are automatically sent to your WhatsApp batch group.";
+      ? "ආයුබෝවන්! 📚 සජීවී පන්ති Zoom ලින්ක් එක පන්තිය ආරම්භ වීමට විනාඩි 15 කට පෙර ඔබේ LMS ප්‍රධාන පිටුවේ (Enrolled Course → Content → Zoom links) දර්ශනය වන අතර ඔබේ WhatsApp Group එකටද එවනු ලැබේ."
+      : "Live class links appear on your LMS Homepage (Enrolled Course > Content > Zoom links) 15 minutes before the session starts and are automatically sent to your WhatsApp batch group.";
   }
-  if (q.includes('installment') || q.includes('fee') || q.includes('ගාස්තු') || q.includes('වාරික') || q.includes('gewanna')) {
+  if (q.includes('installment') || q.includes('fee') || q.includes('ගාස්තු') || q.includes('වාරික') || q.includes('gewanna') || q.includes('plan')) {
     return isSinhalaOrSinglish
-      ? "ආයුබෝවන්! 💳 ඔව්, සියලුම ඩිප්ලෝමා පාඨමාලා සඳහා මාස 3 ක හෝ මාස 6 ක පොලී රහිත වාරික ගෙවීමේ ක්‍රම පවතී. online card, bank transfer හෝ EZ Cash මගින් ගෙවිය හැක."
-      : "Yes! We offer a 3-month or 6-month zero-interest installment plan for all diploma programs.";
+      ? "ආයුබෝවන්! 💳 ඔව්, Starter (7.5% commission), Professional (Rs. 1,500/mo) සහ Enterprise පැකේජ පවතී. online card, bank transfer හෝ EZ Cash මගින් ගෙවිය හැක."
+      : "Yes! Starter, Professional (Rs. 1,500/mo), and Enterprise plans are available. Card payments and bank deposits are supported.";
   }
   if (q.includes('recording') || q.includes('රෙකෝඩින්')) {
     return isSinhalaOrSinglish
-      ? "ආයුබෝවන්! 🎥 පන්තියේ සජීවී වීඩියෝ රෙකෝඩින්ග්ස් පන්තිය අවසන් වී පැය 4 ක් ඇතුළත ඔබේ LMS ගිණුමට අප්ලෝඩ් කරනු ලැබේ. එය වසර 1 ක් පුරා නැරඹිය හැක."
-      : "Class recordings are processed and uploaded to the LMS within 4 hours after the live session concludes.";
+      ? "ආයුබෝවන්! 🎥 පන්තියේ සජීවී වීඩියෝ HD රෙකෝඩින්ග්ස් Dashboard → Enrolled Course → Content → Recordings යටතේ 24/7 unlimited replays සමඟ බලන්න පුළුවන."
+      : "Class recordings are processed and available 24/7 on your LMS portal under Enrolled Course > Content > Recordings.";
+  }
+  if (q.includes('register') || q.includes('ලියාපදිංචි')) {
+    return isSinhalaOrSinglish
+      ? "ආයුබෝවන්! 📝 dash.onlineclass.edu.lk/student-registration/ වෙත ගොස් Name, Email, Password ඇතුළත් කර register වන්න. Verification email එකක් ලැබෙනු ඇත."
+      : "To register, visit dash.onlineclass.edu.lk/student-registration/ and complete the form. A verification email will be sent.";
+  }
+  if (q.includes('paper') || q.includes('notes') || q.includes('tute') || q.includes('ප්‍රශ්න පත්‍ර')) {
+    return isSinhalaOrSinglish
+      ? "ආයුබෝවන්! 📄 Past papers, Model papers, Lecture notes සහ PDF downloads Enrolled Course → Resources යටතේ ලබාගත හැක."
+      : "Lecture notes, tutes, model papers, and PDF downloads are available under Enrolled Course > Resources > Papers.";
+  }
+  if (q.includes('hotline') || q.includes('phone') || q.includes('contact') || q.includes('කතා කරන්න')) {
+    return isSinhalaOrSinglish
+      ? "ආයුබෝවන්! 📞 LMS සහාය සඳහා hotline: 078 904 9004 | ගුරුවරුන්ගේ hotline: 078 904 9009 වෙත අමතන්න."
+      : "LMS Support Hotline: 078 904 9004 | Teachers Hotline: 078 904 9009.";
   }
 
   return isSinhalaOrSinglish
-    ? `ආයුබෝවන්! ඔබගේ පණිවිඩය ලැබුණි: "${userQuery}". පාඨමාලා විස්තර සහ කාලසටහන් ඔබේ LMS ගිණුමේ ඇති අතර, අපගේ නියෝජිතයෙකුද ළඟදීම ඔබ හා සම්බන්ධ වනු ඇත.`
-    : `Thank you for contacting OnlineClass Support! We received your query: "${userQuery}". All class details, Zoom links, and schedules are available on your student portal.`;
+    ? `ආයුබෝවන්! ඔබගේ පණිවිඩය ලැබුණි: "${userQuery}". සියලුම පන්ති විස්තර, Zoom links සහ recordings ඔබේ LMS ගිණුමේ (dash.onlineclass.edu.lk) ඇති අතර, අපගේ නියෝජිතයෙකුද (Hotline: 078 904 9004) ළඟදීම ඔබ හා සම්බන්ධ වනු ඇත.`
+    : `Thank you for contacting OnlineClass Support! We received your query: "${userQuery}". All class details, Zoom links, and schedules are available on your student portal (dash.onlineclass.edu.lk). Hotline: 078 904 9004.`;
 }
 
 export default async function handler(req: any, res: any) {
