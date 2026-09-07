@@ -64,8 +64,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userText = msg.text?.body || '';
       } else if (msg.type === 'interactive') {
         userText = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
-      } else {
-        userText = `[Unsupported media type: ${msg.type}]`;
       }
 
       if (userText) {
@@ -75,10 +73,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const aiResult = queryGroundedAI(userText, INITIAL_FAQS, 55);
         const replyAnswer = aiResult.groundedAnswer;
 
-        // Save incoming customer message & bot reply to Supabase Database
+        // STEP A: IMMEDIATELY Send WhatsApp reply via Meta Cloud API
+        const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1314283051764757';
+        const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
+
+        if (accessToken) {
+          try {
+            console.log(`[Meta Cloud API Outbound] Sending to ${cleanPhone}...`);
+            const metaRes = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: cleanPhone,
+                type: 'text',
+                text: { body: replyAnswer }
+              })
+            });
+            const metaJson = await metaRes.json();
+            console.log(`[Meta Response Status: ${metaRes.status}]`, metaJson);
+          } catch (metaErr) {
+            console.error('[Meta Outbound Network Error]', metaErr);
+          }
+        } else {
+          console.warn('[WhatsApp Warning] META_WHATSAPP_ACCESS_TOKEN is missing in process.env');
+        }
+
+        // STEP B: Non-blocking Supabase Database Persistence
         if (supabase) {
           try {
-            // 1. Get or Create Customer
             let { data: customer } = await supabase
               .from('customers')
               .select('id')
@@ -95,7 +122,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             if (customer) {
-              // 2. Get or Create Conversation
               let { data: conv } = await supabase
                 .from('conversations')
                 .select('id')
@@ -122,7 +148,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               }
 
               if (conv) {
-                // 3. Save Student Incoming Message
                 await supabase.from('messages').insert({
                   conversation_id: conv.id,
                   external_message_id: msg.id || `MSG-IN-${Date.now()}`,
@@ -132,7 +157,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   status: 'delivered'
                 });
 
-                // 4. Save AI Bot Outgoing Response
                 await supabase.from('messages').insert({
                   conversation_id: conv.id,
                   external_message_id: `MSG-OUT-${Date.now()}`,
@@ -144,29 +168,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               }
             }
           } catch (dbErr) {
-            console.error('[Supabase Webhook Save Exception]', dbErr);
+            console.error('[Supabase Save Non-Blocking Exception]', dbErr);
           }
-        }
-
-        // Send WhatsApp reply via Meta Cloud API
-        const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1314283051764757';
-        const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
-
-        if (accessToken) {
-          await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              recipient_type: 'individual',
-              to: cleanPhone,
-              type: 'text',
-              text: { body: replyAnswer }
-            })
-          });
         }
       }
 
