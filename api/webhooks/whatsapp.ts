@@ -59,6 +59,42 @@ Official Verified Knowledge Base (13 Categories):
     - Knowledge base එකේ නැති තොරතුරු සඳහා: "මේ ගැන නිවැරදි තොරතුරක් මට දැනට ලබාගත නොහැක. කරුණාකර LMS support වෙත සම්බන්ධ වන්න." ලෙස පවසන්න.
     - කිසිවිටකත් මිල ගණන් හෝ විස්තර මනෝකල්පිතව සාදන්න එපා (Do NOT invent prices/details).
 
+14. Official Active Courses Catalog (පවත්නා සියලුම පාඨමාලා සහ පන්ති):
+    a. Full Stack Web Development (React & Node.js) [Code: WEB-101]:
+       - Duration: 16 Weeks | Category: Software Engineering
+       - Fee: $499 / Rs. 145,000 (Installments available)
+       - Schedule: Mon, Wed, Fri (7:00 PM - 9:00 PM)
+       - Topics: HTML5/CSS3, JS ES6+, TypeScript, React 19, Node.js, Express, PostgreSQL/MongoDB, Vercel/Render deployment.
+
+    b. Data Science & Applied Artificial Intelligence [Code: AI-202]:
+       - Duration: 20 Weeks | Category: Artificial Intelligence
+       - Fee: $649 / Rs. 185,000 (Installments available)
+       - Schedule: Tue, Thu (6:30 PM - 8:30 PM) & Sat (10:00 AM - 12:00 PM)
+       - Topics: Python, NumPy/Pandas, Machine Learning, PyTorch Deep Learning, LLMs, RAG Systems & Analytics.
+
+    c. Python Programming Masterclass (Beginner to Pro) [Code: PY-100]:
+       - Duration: 8 Weeks | Category: Programming
+       - Fee: $299 / Rs. 85,000 (Installments available)
+       - Schedule: Sat & Sun (9:00 AM - 1:00 PM)
+       - Topics: Python Syntax, OOP, Web Scraping, FastAPI, PyTest, Automated WhatsApp Bot projects.
+
+    d. UI/UX Design Systems & Product Strategy [Code: UIX-301]:
+       - Duration: 10 Weeks | Category: Design & Product
+       - Fee: $399 / Rs. 115,000
+       - Schedule: Mon & Thu (8:00 PM - 10:00 PM)
+       - Topics: Figma Masterclass, Wireframing, User Research, Interactive Prototyping, Accessibility (WCAG).
+
+    e. Cloud Engineering & DevOps with AWS [Code: AWS-401]:
+       - Duration: 12 Weeks | Category: Cloud Infrastructure
+       - Fee: $549 / Rs. 160,000
+       - Schedule: Wed & Fri (6:00 PM - 8:00 PM)
+       - Topics: AWS EC2/S3/Lambda, Docker, Kubernetes, Terraform IaC, GitHub Actions CI/CD.
+
+    f. A/L & O/L Secondary Education Classes:
+       - A/L Streams: Combined Maths, Physics, Chemistry, Biology, Information & Communication Technology (ICT).
+       - O/L Core Subjects: Mathematics, Science, English, Commerce & ICT.
+       - Direct search & enrollment via onlineclass.edu.lk catalog ("Find Online Class").
+
 Response Style Guidelines:
 - Start Sinhala replies with a warm greeting such as "ආයුබෝවන්!" or "ස්තූතියි අප හා සම්බන්ධ වීම ගැන!".
 - Keep the tone polite, professional, encouraging, and friendly.
@@ -71,7 +107,10 @@ async function generateGeminiResponse(userQuery: string): Promise<string> {
   if (GEMINI_API_KEY && !GEMINI_API_KEY.includes('placeholder')) {
     const candidateModels = [
       'gemini-3.6-flash',
-      'gemini-3.5-flash'
+      'gemini-3.5-flash',
+      'gemini-2.5-flash',
+      'gemini-1.5-flash',
+      'gemini-flash-latest'
     ];
 
     for (const model of candidateModels) {

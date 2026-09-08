@@ -1,6 +1,57 @@
 import { FAQItem } from '../types';
 
 export const INITIAL_FAQS: FAQItem[] = [
+  // 0. Courses & Catalog (පාඨමාලා සහ පන්ති)
+  {
+    id: 'FAQ-CRS-001',
+    category: 'Courses & Catalog (පාඨමාලා සහ පන්ති)',
+    question: 'lms eke thiyena courses monawada?',
+    answer: 'OnlineClass LMS හි පහත සඳහන් පාඨමාලා සහ පන්ති පවතී:\n1. 💻 Full Stack Web Development (WEB-101)\n2. 🤖 Data Science & Applied AI (AI-202)\n3. 🐍 Python Programming Masterclass (PY-100)\n4. 🎨 UI/UX Design Systems (UIX-301)\n5. ☁️ Cloud Engineering & AWS DevOps (AWS-401)\n6. 🎓 A/L & O/L Science, Maths, ICT, Commerce Classes.',
+    keywords: ['courses', 'course', 'thiyena', 'classes', 'subjects', 'ලැයිස්තුව', 'පාඨමාලා', 'පන්ති', 'list', 'monawada'],
+    lastUpdated: '2026-09-08',
+    isGrounded: true,
+    usageCount: 230,
+  },
+  {
+    id: 'FAQ-CRS-002',
+    category: 'Courses & Catalog (පාඨමාලා සහ පන්ති)',
+    question: 'Web Development course eke details monawada?',
+    answer: 'Full Stack Web Development (WEB-101) පාඨමාලාව සති 16ක වැඩසටහනකි. HTML5/CSS3, JavaScript ES6+, TypeScript, React 19, Node.js, Express, PostgreSQL/MongoDB සහ Deployment ආවරණය කරයි.',
+    keywords: ['web development', 'web dev', 'react', 'node', 'full stack', 'web-101'],
+    lastUpdated: '2026-09-08',
+    isGrounded: true,
+    usageCount: 140,
+  },
+  {
+    id: 'FAQ-CRS-003',
+    category: 'Courses & Catalog (පාඨමාලා සහ පන්ති)',
+    question: 'Python course එකේ විස්තර සහ ගාස්තු මොනවාද?',
+    answer: 'Python Programming Masterclass (PY-100) සති 8ක පාඨමාලාවකි (Sat & Sun 9 AM - 1 PM). ගාස්තුව $299 / Rs. 85,000 වන අතර වාරික ගෙවීම් ලබාගත හැක. Python Syntax, OOP, Web Scraping, FastAPI, PyTest උගන්වයි.',
+    keywords: ['python', 'py-100', 'python course', 'fastapi', 'scraping', 'ගාස්තු'],
+    lastUpdated: '2026-09-08',
+    isGrounded: true,
+    usageCount: 125,
+  },
+  {
+    id: 'FAQ-CRS-004',
+    category: 'Courses & Catalog (පාඨමාලා සහ පන්ති)',
+    question: 'Data Science සහ AI course එක ගැන කියන්න.',
+    answer: 'Data Science & Applied AI (AI-202) සති 20ක උසස් පාඨමාලාවකි. Python, NumPy/Pandas, Machine Learning, PyTorch Deep Learning, LLMs & RAG Systems ආවරණය කරයි.',
+    keywords: ['data science', 'ai', 'artificial intelligence', 'ai-202', 'machine learning'],
+    lastUpdated: '2026-09-08',
+    isGrounded: true,
+    usageCount: 160,
+  },
+  {
+    id: 'FAQ-CRS-005',
+    category: 'Courses & Catalog (පාඨමාලා සහ පන්ති)',
+    question: 'A/L සහ O/L පන්ති තියෙනවද?',
+    answer: 'ඔව්! onlineclass.edu.lk හි A/L Combined Maths, Physics, Chemistry, Biology, ICT සහ O/L Maths, Science, English, Commerce, ICT පන්ති පවතී. Find Online Class catalog එකෙන් සෙවිය හැක.',
+    keywords: ['al', 'ol', 'a/l', 'o/l', 'advanced level', 'ordinary level', 'combined maths', 'physics', 'ict'],
+    lastUpdated: '2026-09-08',
+    isGrounded: true,
+    usageCount: 195,
+  },
   // 1. Registration (ලියාපදිංචිය)
   {
     id: 'FAQ-REG-001',
