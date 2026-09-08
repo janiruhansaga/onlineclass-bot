@@ -90,7 +90,7 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Meta Cloud API Connected (+94783351453)
+              OnlineClass Bot Connected (+94789049004)
             </span>
             <span className="text-slate-400 text-xs font-mono">{formattedDateTime}</span>
           </div>

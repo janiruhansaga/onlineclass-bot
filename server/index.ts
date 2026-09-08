@@ -588,7 +588,7 @@ app.post('/api/webhooks/lms', async (req: Request, res: Response) => {
 // WhatsApp Web Session State & QR Pairing Engine
 let webSessionState = {
   status: 'connected',
-  linkedPhone: '+94783351453',
+  linkedPhone: '+94789049004',
   deviceName: 'OnlineClass WhatsApp Web Assistant',
   batteryLevel: 98,
   pairingCode: '8K4P-2M9W',

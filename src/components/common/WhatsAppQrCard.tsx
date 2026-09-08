@@ -25,13 +25,16 @@ interface WhatsAppQrCardProps {
 export const WhatsAppQrCard: React.FC<WhatsAppQrCardProps> = ({ onSessionChange, compact = false }) => {
   const [activeTab, setActiveTab] = useState<'qr' | 'pairing'>('qr');
   const [status, setStatus] = useState<'disconnected' | 'qr_ready' | 'connecting' | 'connected'>('connected');
-  const [linkedPhone, setLinkedPhone] = useState('+94783351453');
+  const [linkedPhone, setLinkedPhone] = useState('+94789049004');
   const [batteryLevel, setBatteryLevel] = useState(98);
   const [countdown, setCountdown] = useState(48);
   const [isScanning, setIsScanning] = useState(false);
-  const [pairingPhoneInput, setPairingPhoneInput] = useState('+94783351453');
+  const [pairingPhoneInput, setPairingPhoneInput] = useState('+94789049004');
   const [generatedPairingCode, setGeneratedPairingCode] = useState('8K4P-2M9W');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [tempPhone, setTempPhone] = useState('+94789049004');
+
 
   // Countdown timer for QR code refresh
   useEffect(() => {
@@ -50,13 +53,15 @@ export const WhatsAppQrCard: React.FC<WhatsAppQrCardProps> = ({ onSessionChange,
   const handleSimulateConnect = () => {
     setIsScanning(true);
     setStatus('connecting');
+    const targetPhone = tempPhone || pairingPhoneInput || '+94789049004';
+    setLinkedPhone(targetPhone);
     setTimeout(() => {
       setStatus('connected');
       setIsScanning(false);
       if (onSessionChange) {
         onSessionChange({
           status: 'connected',
-          linkedPhone: pairingPhoneInput || '+94783351453',
+          linkedPhone: targetPhone,
           deviceName: 'OnlineClass WhatsApp Web Assistant',
           batteryLevel: 98,
           connectedAt: new Date().toLocaleTimeString()
@@ -64,6 +69,14 @@ export const WhatsAppQrCard: React.FC<WhatsAppQrCardProps> = ({ onSessionChange,
       }
     }, 1500);
   };
+
+  const handleSaveBotPhone = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempPhone.trim()) return;
+    setLinkedPhone(tempPhone.trim());
+    setIsEditingPhone(false);
+  };
+
 
   const handleDisconnect = () => {
     setStatus('qr_ready');
@@ -150,13 +163,39 @@ export const WhatsAppQrCard: React.FC<WhatsAppQrCardProps> = ({ onSessionChange,
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-base">{linkedPhone}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-bold">
-                      ACTIVE & LIVE
-                    </span>
+                    {isEditingPhone ? (
+                      <form onSubmit={handleSaveBotPhone} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={tempPhone}
+                          onChange={(e) => setTempPhone(e.target.value)}
+                          className="px-2 py-1 bg-white border border-emerald-400 rounded-lg text-xs font-mono font-bold text-slate-900 outline-none"
+                          placeholder="+94789049004"
+                        />
+                        <button type="submit" className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold">
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setIsEditingPhone(false)} className="text-xs text-slate-500">
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <>
+                        <span className="font-bold text-slate-900 text-base">{linkedPhone}</span>
+                        <button
+                          onClick={() => { setTempPhone(linkedPhone); setIsEditingPhone(true); }}
+                          className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold underline"
+                        >
+                          (Edit Bot Number)
+                        </button>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-bold">
+                          BOT ACCOUNT LIVE
+                        </span>
+                      </>
+                    )}
                   </div>
                   <p className="text-xs text-slate-600 font-medium">
-                    OnlineClass AI Bot active on WhatsApp Web Session. Messages automatically auto-replied.
+                    Official OnlineClass AI Assistant active on WhatsApp Web Session ({linkedPhone}).
                   </p>
                   <div className="flex items-center gap-4 text-[11px] text-slate-500 font-mono pt-1">
                     <span className="flex items-center gap-1">
