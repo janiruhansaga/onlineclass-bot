@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../types';
 
 // Default Meta Credentials Fallback
 const DEFAULT_ACCESS_TOKEN = 'EAAV6PB2bsYYBSRzgiXhFaVLZCJl6iynS9LtWwhZBUsvfpoCB5Mz3yGYb5TyrMKxF634agYmksGyXqBZAZCJaRtMHNnzWZAnFuDHWZA6g9MByTudibC3ZBEpZCEaXFeY6oSUzC4fZC0u3e2lllqUQiZCJjmWZA0hRZCZCca4rm1KOTGBUKIfY3Kc5VqyQHoZCn6kgWfcAZDZD';
@@ -152,7 +152,7 @@ async function generateGeminiResponse(userQuery: string): Promise<string> {
     : `Thank you for contacting OnlineClass Support! We received your query: "${userQuery}". All class details, Zoom links, and schedules are available on your student portal (dash.onlineclass.edu.lk). Hotline: 078 904 9004.`;
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
