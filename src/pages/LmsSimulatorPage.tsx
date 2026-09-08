@@ -96,13 +96,13 @@ export const LmsSimulatorPage: React.FC = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-cyan-600 font-bold text-xs uppercase tracking-wider">
             <Send className="w-4 h-4" />
-            LMS Webhook & Broadcast Simulator
+            LMS Webhook & Broadcast Engine
           </div>
           <h1 className="text-xl font-bold text-slate-900">
             LMS Automated Event Trigger Engine
           </h1>
           <p className="text-xs text-slate-500 max-w-2xl">
-            Simulate incoming webhooks from your Learning Management System (LMS) to dispatch 
+            Trigger automated webhooks from your Learning Management System (LMS) to dispatch 
             automated broadcast updates, class alerts, or recording notifications via WhatsApp.
           </p>
         </div>

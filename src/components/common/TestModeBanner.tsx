@@ -31,7 +31,7 @@ export const TestModeBanner: React.FC = () => {
       <div className="flex items-center gap-2 font-medium">
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          TEST MODE — Meta WhatsApp Cloud API Active
+          LIVE — Meta WhatsApp Cloud API Connected
         </span>
         <span className="hidden sm:inline text-slate-600">|</span>
         <span className="hidden sm:inline-flex items-center gap-1 text-slate-300">

@@ -108,7 +108,7 @@ export const DashboardPage: React.FC = () => {
             className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold text-xs shadow-md transition-all flex items-center gap-2 border border-slate-800"
           >
             <Bot className="w-4 h-4 text-emerald-400" />
-            Launch Chat Simulator
+            Open WhatsApp Live Inbox
           </button>
           <button
             onClick={() => setActiveTab('playground')}

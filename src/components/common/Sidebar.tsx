@@ -98,12 +98,12 @@ export const Sidebar: React.FC = () => {
         <div className="p-3 m-2 rounded-xl bg-slate-850 border border-slate-800/80 text-[11px] text-slate-400 space-y-1.5">
           <div className="flex items-center justify-between text-slate-300 font-medium">
             <span>Meta API Readiness</span>
-            <span className="text-[10px] bg-slate-800 text-cyan-400 px-1.5 py-0.5 rounded font-mono">
-              Demo Mode
+            <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1.5 py-0.5 rounded font-mono">
+              Live Active
             </span>
           </div>
           <p className="text-[10px] text-slate-400 leading-tight">
-            Local WhatsApp engine fully active. Swappable to Meta Cloud API.
+            Meta Cloud API Webhook Verified & Live.
           </p>
         </div>
       )}

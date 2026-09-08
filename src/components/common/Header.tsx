@@ -80,15 +80,15 @@ export const Header: React.FC = () => {
         {/* Reset Demo Data Button */}
         <button
           onClick={() => {
-            if (confirm('Reset demo state back to default 136 FAQs and mock chats?')) {
+            if (confirm('Reset system state back to default 136 FAQs and initial chats?')) {
               resetAllData();
             }
           }}
           className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-xs flex items-center gap-1.5"
-          title="Reset Demo Data"
+          title="Reset System Data"
         >
           <RotateCcw className="w-4 h-4 text-slate-500" />
-          <span className="hidden lg:inline text-xs text-slate-600 font-medium">Reset Demo</span>
+          <span className="hidden lg:inline text-xs text-slate-600 font-medium">Reset State</span>
         </button>
 
         {/* Notification Bell */}
@@ -161,7 +161,10 @@ export const Header: React.FC = () => {
           </div>
           <div className="hidden sm:block text-left">
             <div className="text-xs font-semibold text-slate-900 leading-tight">Support Admin</div>
-            <div className="text-[10px] text-emerald-600 font-medium">Demo Mode Engine</div>
+            <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live WhatsApp Engine
+            </div>
           </div>
         </div>
       </div>

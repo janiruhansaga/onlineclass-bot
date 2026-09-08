@@ -24,9 +24,9 @@ export const CommandPalette: React.FC = () => {
   if (!isCommandPaletteOpen) return null;
 
   const pages: { id: NavigationTab; title: string; desc: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', title: 'Dashboard', desc: 'Overview of metrics & system health', icon: <LayoutDashboard className="w-4 h-4 text-emerald-500" /> },
-    { id: 'simulator', title: 'WhatsApp Simulator', desc: 'Simulate student chats in real-time', icon: <MessageSquare className="w-4 h-4 text-blue-500" /> },
-    { id: 'playground', title: 'AI Grounding Playground', desc: 'Test queries against the 136 FAQ Base', icon: <Sparkles className="w-4 h-4 text-purple-500" /> },
+    { id: 'dashboard', title: 'Executive Dashboard', desc: 'Overview metrics & analytics', icon: <LayoutDashboard className="w-4 h-4 text-emerald-500" /> },
+    { id: 'simulator', title: 'WhatsApp Live Inbox', desc: 'Manage live student chats & AI responses', icon: <MessageSquare className="w-4 h-4 text-blue-500" /> },
+    { id: 'playground', title: 'AI Grounding Sandbox', desc: 'Test queries against grounding knowledge base', icon: <Sparkles className="w-4 h-4 text-cyan-500" /> },
     { id: 'kb', title: 'FAQ Knowledge Base', desc: 'Manage 136 approved FAQ answers', icon: <BookOpen className="w-4 h-4 text-cyan-500" /> },
     { id: 'lms', title: 'LMS Webhook Engine', icon: <Send className="w-4 h-4 text-amber-500" />, desc: 'Simulate broadcasting LMS notifications' },
     { id: 'courses', title: 'Courses & Recommender', desc: 'Explore online class catalog & AI quiz', icon: <GraduationCap className="w-4 h-4 text-emerald-500" /> },
