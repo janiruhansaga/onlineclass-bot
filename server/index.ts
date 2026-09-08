@@ -27,6 +27,105 @@ const processedMessageIds = new Set<string>();
 let realTimeChats: any[] = [...INITIAL_CHATS];
 let realTimeMessages: Record<string, any[]> = { ...INITIAL_MESSAGES };
 
+const GEMINI_API_KEY = process.env.AI_API_KEY || '';
+
+const SYSTEM_FAQS_CONTEXT = `
+You are the official AI Support Assistant for OnlineClass Education Sri Lanka (https://onlineclass.edu.lk/ and dash.onlineclass.edu.lk).
+Your mission is to understand student inquiries in Sinhala (සිංහල Unicode), Singlish (Sinhala written in English letters, e.g., "zoom link eka koheda", "panti thiyenne kawadada", "recording balanne kohomada", "fee gewanne kohomada"), and English, and provide extremely polite, clear, accurate, and helpful responses in standard natural Sinhala (සිංහල). If the student writes purely in English, reply in friendly English.
+
+Official Verified Knowledge Base for onlineclass.edu.lk (13 Categories):
+1. Registration (ලියාපදිංචිය):
+   - Visit onlineclass.edu.lk or dash.onlineclass.edu.lk/student-registration/ to register with Name, Email, Password, and Phone Number.
+   - Click "Verify Email" on the link sent to your inbox to activate account.
+   - Help Desk guide contains step-by-step registration instructions.
+
+2. Login & OTP (ප්‍රවේශ වීම):
+   - Identity verification sends a 6-digit OTP code to your registered email address upon login.
+   - Enter Password and OTP on initial login. Select "Keep me signed in" for seamless access.
+   - Google Sign-In is supported with your registered Gmail account. Never share passwords or OTPs in chat.
+
+3. Student Dashboard (ප්‍රධාන පුවරුව):
+   - Access Student Dashboard at dash.onlineclass.edu.lk. Go to Dashboard Menu -> Enrolled Courses to access registered classes.
+
+4. Live Class Zoom Links (සජීවී පන්ති Zoom සබැඳි):
+   - Zoom class links appear under Enrolled Course -> Content -> Zoom links 15 minutes before session start.
+   - Auto-reminders and Zoom links are also dispatched to WhatsApp batch groups.
+
+5. HD Class Recordings (පටිගත කිරීම් 24/7):
+   - Recordings available 24/7 with unlimited replays under Enrolled Course -> Content -> Recordings.
+   - Processed and uploaded within 4 hours after live session completion.
+
+6. Lecture Notes & Exam Papers (නිබන්ධන සහ ප්‍රශ්න පත්‍ර):
+   - Past papers, model papers, Tutes, and lecture notes PDF downloads under Enrolled Course -> Resources -> Papers.
+
+7. Course Finder & Catalog (පන්ති විස්තර):
+   - Search A/L and O/L online/physical classes by Subject, Teacher, or Title on the Find Online Class catalog.
+
+8. Exams & Attendance (විභාග සහ පැමිණීම):
+   - Automated MCQ online exams, instant scoring, auto-attendance logging, and progress reports.
+
+9. Payments & Bank Deposits (ගෙවීම් ක්‍රම):
+   - Card payments, Bank deposits, and EZ Cash with instant receipt verification and automated class unlocking.
+
+10. Subscription Plans & Pricing (ගාස්තු සහ පැකේජ):
+    - Starter Plan: 7.5% commission per student fee.
+    - Professional Plan: 7.5% + Rs. 1,500/month (Up to 5 Zoom sessions monthly, scheduling, link management & reminders).
+    - Enterprise Plan: Custom pricing (Dedicated account manager, custom branding, bulk SMS).
+
+11. Mobile App & Help Desk (ඇප් සහ සහාය):
+    - Install OnlineClass Web App directly from the Dashboard.
+    - LMS Support Hotline: 078 904 9004 | Teachers Hotline: 078 904 9009.
+
+12. Troubleshooting (ගැටලු විසඳා ගැනීම):
+    - If OTP or class access issue occurs, check Spam folder or contact LMS Hotline 078 904 9004.
+
+13. Escalation Policy:
+    - If question is out of scope or sensitive (e.g. asking for server passwords), invite student to wait for human agent: "අපගේ නියෝජිතයෙකු ළඟදීම ඔබ හා සම්බන්ධ වනු ඇත."
+`;
+
+async function generateGeminiResponse(userQuery: string): Promise<{ text: string; isGemini: boolean }> {
+  if (GEMINI_API_KEY && !GEMINI_API_KEY.includes('placeholder')) {
+    const candidateModels = ['gemini-3.6-flash', 'gemini-3.5-flash'];
+
+    for (const model of candidateModels) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        const res = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: SYSTEM_FAQS_CONTEXT },
+                  { text: `Student Question: "${userQuery}"` }
+                ]
+              }
+            ]
+          })
+        });
+
+        clearTimeout(timeoutId);
+        const data = await res.json();
+        const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (generatedText) {
+          console.log(`[Gemini AI LLM Success] Answer generated using model: ${model}`);
+          return { text: generatedText.trim(), isGemini: true };
+        }
+      } catch (geminiErr) {
+        console.error(`[Gemini Model ${model} Exception]`, geminiErr);
+      }
+    }
+  }
+
+  return { text: '', isGemini: false };
+}
+
 let systemFaqs = [...INITIAL_FAQS];
 let processedLmsEvents: any[] = [];
 let escalationTickets: any[] = [];
@@ -172,7 +271,44 @@ app.post('/api/webhooks/whatsapp', async (req: Request, res: Response) => {
     }
     realTimeMessages[existingChat.id].push(userMsgObj);
 
-    // Run AI Grounding Engine against 136 Approved FAQs
+    // 1. Try Gemini AI LLM with onlineclass.edu.lk Knowledge Base
+    const geminiRes = await generateGeminiResponse(userText);
+
+    if (geminiRes.isGemini && geminiRes.text) {
+      const answer = geminiRes.text;
+      console.log(`[Gemini AI Match] Generated answer for "${userText}" -> Sending WhatsApp response to ${formattedPhone}...`);
+
+      const whatsappRes = await sendWhatsAppTextMessage(rawPhone, answer);
+
+      const botMsgObj = {
+        id: `MSG-BOT-${Date.now()}`,
+        chatId: existingChat.id,
+        sender: 'bot',
+        text: answer,
+        timestamp: timeStr,
+        status: 'delivered',
+        confidenceScore: 98,
+        isGroundingFailure: false
+      };
+      realTimeMessages[existingChat.id].push(botMsgObj);
+      existingChat.lastMessage = answer;
+
+      logServerActivity(
+        'AI_RESPONSE',
+        'Gemini AI Response Sent (onlineclass.edu.lk)',
+        `Answered "${userText}" using Gemini AI`,
+        formattedPhone,
+        'success'
+      );
+
+      return res.status(200).json({
+        status: 'success',
+        engine: 'gemini-3.6-flash',
+        whatsappSent: whatsappRes.success
+      });
+    }
+
+    // 2. Fallback to Local AI Grounding Engine against 136 Approved FAQs
     const aiResult = queryGroundedAI(userText, systemFaqs, 55);
 
     // If AI Grounded Match Confirmed

@@ -71,16 +71,14 @@ async function generateGeminiResponse(userQuery: string): Promise<string> {
   if (GEMINI_API_KEY && !GEMINI_API_KEY.includes('placeholder')) {
     const candidateModels = [
       'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-flash-latest',
-      'gemini-2.5-flash'
+      'gemini-3.5-flash'
     ];
 
     for (const model of candidateModels) {
       try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4500);
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
         const res = await fetch(geminiUrl, {
           method: 'POST',
