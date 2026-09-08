@@ -238,7 +238,7 @@ app.post('/api/webhooks/whatsapp', async (req: Request, res: Response) => {
 
     // IDEMPOTENCY CHECK: Prevent duplicate processing of same WhatsApp message
     if (processedMessageIds.has(externalMessageId)) {
-      console.log(`[Idempotency Skip] Message ID ${externalMessageId} already processed.`);
+      console.log(`[Idempotency Skip] Message ID ${externalMessageId} already processed or queued.`);
       return res.status(200).send('DUPLICATE_SKIPPED');
     }
     processedMessageIds.add(externalMessageId);
@@ -247,201 +247,148 @@ app.post('/api/webhooks/whatsapp', async (req: Request, res: Response) => {
       if (firstKey) processedMessageIds.delete(firstKey);
     }
 
-    // Extract Message Content
-    let userText = '';
-    let messageType = msg.type;
+    // 1. IMMEDIATELY ACKNOWLEDGE META WITH 200 OK TO PREVENT RETRIES & DUPLICATE DELAYED MESSAGES
+    res.status(200).send('EVENT_RECEIVED');
 
-    if (messageType === 'text') {
-      userText = msg.text?.body || '';
-    } else if (messageType === 'interactive') {
-      userText = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
-    } else {
-      userText = `[Unsupported message type: ${messageType}]`;
-      console.warn(`[Unsupported Message Type] Received ${messageType} from ${formattedPhone}`);
-      
-      logServerActivity('AI_RESPONSE', 'Unsupported Media Received', `Received ${messageType} from ${formattedPhone}`, formattedPhone, 'warning');
-      
-      await sendWhatsAppTextMessage(
-        rawPhone,
-        'Thank you for your message. Currently, I can process text questions regarding online courses. Unsupported media has been forwarded to human review.'
-      );
-      return res.status(200).send('EVENT_RECEIVED');
-    }
+    // 2. PROCESS AI GENERATION AND SINGLE WHATSAPP DISPATCH ASYNCHRONOUSLY
+    setImmediate(async () => {
+      try {
+        let userText = '';
+        let messageType = msg.type;
 
-    console.log(`[WhatsApp Incoming REAL] From: ${customerName} (${formattedPhone}) | Query: "${userText}"`);
-    logServerActivity('AI_RESPONSE', 'Incoming REAL WhatsApp Message', `"${userText}" from ${customerName}`, formattedPhone, 'info');
+        if (messageType === 'text') {
+          userText = msg.text?.body || '';
+        } else if (messageType === 'interactive') {
+          userText = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
+        } else {
+          console.warn(`[Unsupported Message Type] Received ${messageType} from ${formattedPhone}`);
+          await sendWhatsAppTextMessage(
+            rawPhone,
+            'Thank you for your message. Currently, I can process text questions regarding online courses.'
+          );
+          return;
+        }
 
-    // Find or create Real Customer Chat Session
-    const chatId = `CHAT-REAL-${rawPhone}`;
-    let existingChat = realTimeChats.find((c) => c.phoneNumber.replace(/[^\d]/g, '') === rawPhone.replace(/[^\d]/g, ''));
-    
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        console.log(`[WhatsApp Incoming REAL] From: ${customerName} (${formattedPhone}) | Query: "${userText}"`);
+        logServerActivity('AI_RESPONSE', 'Incoming REAL WhatsApp Message', `"${userText}" from ${customerName}`, formattedPhone, 'info');
 
-    if (!existingChat) {
-      existingChat = {
-        id: chatId,
-        customerName: customerName,
-        phoneNumber: formattedPhone,
-        courseName: 'Online Class Student',
-        batch: 'Real WhatsApp Lead',
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(customerName)}&background=0D9488&color=fff`,
-        lastMessage: userText,
-        lastMessageTime: timeStr,
-        unreadCount: 1,
-        mode: 'ai',
-        status: 'active',
-        tags: ['Real WhatsApp', 'Meta Cloud API'],
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      realTimeChats.unshift(existingChat);
-    } else {
-      existingChat.lastMessage = userText;
-      existingChat.lastMessageTime = timeStr;
-      existingChat.customerName = customerName || existingChat.customerName;
-    }
+        // Find or create Real Customer Chat Session
+        const chatId = `CHAT-REAL-${rawPhone}`;
+        let existingChat = realTimeChats.find((c) => c.phoneNumber.replace(/[^\d]/g, '') === rawPhone.replace(/[^\d]/g, ''));
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Add Student Message to Message History
-    const userMsgObj = {
-      id: externalMessageId || `MSG-REAL-${Date.now()}`,
-      chatId: existingChat.id,
-      sender: 'user',
-      text: userText,
-      timestamp: timeStr,
-      status: 'read'
-    };
+        if (!existingChat) {
+          existingChat = {
+            id: chatId,
+            customerName: customerName,
+            phoneNumber: formattedPhone,
+            courseName: 'Online Class Student',
+            batch: 'Real WhatsApp Lead',
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(customerName)}&background=0D9488&color=fff`,
+            lastMessage: userText,
+            lastMessageTime: timeStr,
+            unreadCount: 1,
+            mode: 'ai',
+            status: 'active',
+            tags: ['Real WhatsApp', 'Meta Cloud API'],
+            createdAt: new Date().toISOString().split('T')[0]
+          };
+          realTimeChats.unshift(existingChat);
+        } else {
+          existingChat.lastMessage = userText;
+          existingChat.lastMessageTime = timeStr;
+          existingChat.customerName = customerName || existingChat.customerName;
+        }
 
-    if (!realTimeMessages[existingChat.id]) {
-      realTimeMessages[existingChat.id] = [];
-    }
-    realTimeMessages[existingChat.id].push(userMsgObj);
+        // Add Student Message to Message History
+        const userMsgObj = {
+          id: externalMessageId || `MSG-REAL-${Date.now()}`,
+          chatId: existingChat.id,
+          sender: 'user',
+          text: userText,
+          timestamp: timeStr,
+          status: 'read'
+        };
 
-    // 1. Try Gemini AI LLM with onlineclass.edu.lk Knowledge Base
-    const geminiRes = await generateGeminiResponse(userText);
+        if (!realTimeMessages[existingChat.id]) {
+          realTimeMessages[existingChat.id] = [];
+        }
+        realTimeMessages[existingChat.id].push(userMsgObj);
 
-    if (geminiRes.isGemini && geminiRes.text) {
-      const answer = geminiRes.text;
-      console.log(`[Gemini AI Match] Generated answer for "${userText}" -> Sending WhatsApp response to ${formattedPhone}...`);
+        // Check if chat is in Human Agent Takeover Mode
+        if (existingChat.mode === 'human') {
+          console.log(`[Chat ${existingChat.id}] In Human Mode. Skipping AI reply.`);
+          return;
+        }
 
-      const whatsappRes = await sendWhatsAppTextMessage(rawPhone, answer);
+        // --- SINGLE RESPONSE DISPATCH LOGIC ---
+        let finalAnswer = '';
+        let matchedFaqId: string | undefined = undefined;
+        let matchedCategory: string | undefined = undefined;
+        let confidenceScore = 95;
+        let isFailure = false;
 
-      const botMsgObj = {
-        id: `MSG-BOT-${Date.now()}`,
-        chatId: existingChat.id,
-        sender: 'bot',
-        text: answer,
-        timestamp: timeStr,
-        status: 'delivered',
-        confidenceScore: 98,
-        isGroundingFailure: false
-      };
-      realTimeMessages[existingChat.id].push(botMsgObj);
-      existingChat.lastMessage = answer;
+        // Try Gemini AI LLM First
+        const geminiRes = await generateGeminiResponse(userText);
 
-      logServerActivity(
-        'AI_RESPONSE',
-        'Gemini AI Response Sent (onlineclass.edu.lk)',
-        `Answered "${userText}" using Gemini AI`,
-        formattedPhone,
-        'success'
-      );
+        if (geminiRes.isGemini && geminiRes.text && geminiRes.text.trim().length > 0) {
+          finalAnswer = geminiRes.text.trim();
+          console.log(`[Gemini AI Engine] Generated response for "${userText}"`);
+        } else {
+          // Fallback to Grounded FAQ Matcher
+          const aiResult = queryGroundedAI(userText, systemFaqs, 55);
+          finalAnswer = aiResult.groundedAnswer;
+          matchedFaqId = aiResult.faq?.id;
+          matchedCategory = aiResult.faq?.category;
+          confidenceScore = aiResult.confidenceScore;
+          isFailure = !aiResult.matched;
 
-      return res.status(200).json({
-        status: 'success',
-        engine: 'gemini-3.6-flash',
-        whatsappSent: whatsappRes.success
-      });
-    }
+          if (aiResult.isEscalated) {
+            const ticketId = `ESC-${Date.now().toString().slice(-4)}`;
+            escalationTickets.unshift({
+              id: ticketId,
+              chatId: existingChat.id,
+              customerName,
+              phoneNumber: formattedPhone,
+              userQuery: userText,
+              reason: aiResult.escalationReason || 'unknown_faq',
+              status: 'pending',
+              priority: aiResult.escalationReason === 'sensitive_topic' ? 'high' : 'medium',
+              createdAt: new Date().toLocaleString()
+            });
+            existingChat.mode = 'human';
+            existingChat.status = 'escalated';
+          }
+        }
 
-    // 2. Fallback to Local AI Grounding Engine against 136 Approved FAQs
-    const aiResult = queryGroundedAI(userText, systemFaqs, 55);
+        // DISPATCH ONE SINGLE WHATSAPP RESPONSE TO STUDENT
+        const whatsappRes = await sendWhatsAppTextMessage(rawPhone, finalAnswer);
 
-    // If AI Grounded Match Confirmed
-    if (aiResult.matched && aiResult.faq) {
-      const answer = aiResult.groundedAnswer;
-      console.log(`[AI Match] FAQ ${aiResult.faq.id} (${aiResult.confidenceScore}%) -> Sending WhatsApp response to ${formattedPhone}...`);
+        const botMsgObj = {
+          id: `MSG-BOT-${Date.now()}`,
+          chatId: existingChat.id,
+          sender: 'bot',
+          text: finalAnswer,
+          timestamp: timeStr,
+          status: 'delivered',
+          matchedFaqId,
+          matchedCategory,
+          confidenceScore,
+          isGroundingFailure: isFailure
+        };
+        realTimeMessages[existingChat.id].push(botMsgObj);
+        existingChat.lastMessage = finalAnswer;
 
-      // Dispatch response via Meta Cloud API
-      const whatsappRes = await sendWhatsAppTextMessage(rawPhone, answer);
-
-      // Add Bot Message to Real Time Message History
-      const botMsgObj = {
-        id: `MSG-BOT-${Date.now()}`,
-        chatId: existingChat.id,
-        sender: 'bot',
-        text: answer,
-        timestamp: timeStr,
-        status: 'delivered',
-        matchedFaqId: aiResult.faq.id,
-        matchedCategory: aiResult.faq.category,
-        confidenceScore: aiResult.confidenceScore,
-        isGroundingFailure: false
-      };
-      realTimeMessages[existingChat.id].push(botMsgObj);
-      existingChat.lastMessage = answer;
-
-      logServerActivity(
-        'AI_RESPONSE',
-        `Grounded AI Response Sent (${aiResult.faq.id})`,
-        `Answered "${userText}" with ${aiResult.faq.id} (${aiResult.confidenceScore}% confidence)`,
-        formattedPhone,
-        'success'
-      );
-
-      return res.status(200).json({
-        status: 'success',
-        matchedFaq: aiResult.faq.id,
-        confidence: aiResult.confidenceScore,
-        whatsappSent: whatsappRes.success
-      });
-    }
-
-    // If Grounding Failed / Sensitive Topic -> Trigger Human Escalation
-    console.warn(`[AI Grounding Fail] Creating Human Escalation for "${userText}"`);
-
-    const ticketId = `ESC-${Date.now().toString().slice(-4)}`;
-    const escalationTicket = {
-      id: ticketId,
-      chatId: existingChat.id,
-      customerName,
-      phoneNumber: formattedPhone,
-      userQuery: userText,
-      reason: aiResult.escalationReason || 'unknown_faq',
-      status: 'pending',
-      priority: aiResult.escalationReason === 'sensitive_topic' ? 'high' : 'medium',
-      createdAt: new Date().toLocaleString()
-    };
-    escalationTickets.unshift(escalationTicket);
-
-    existingChat.mode = 'human';
-    existingChat.status = 'escalated';
-
-    const fallbackResponse = aiResult.groundedAnswer;
-    await sendWhatsAppTextMessage(rawPhone, fallbackResponse);
-
-    const botMsgObj = {
-      id: `MSG-BOT-ESC-${Date.now()}`,
-      chatId: existingChat.id,
-      sender: 'bot',
-      text: fallbackResponse,
-      timestamp: timeStr,
-      status: 'delivered',
-      isGroundingFailure: true
-    };
-    realTimeMessages[existingChat.id].push(botMsgObj);
-    existingChat.lastMessage = fallbackResponse;
-
-    logServerActivity(
-      'ESCALATION_CREATED',
-      'Human Escalation Triggered',
-      `Ticket ${ticketId} created for "${userText}" (${aiResult.escalationReason})`,
-      formattedPhone,
-      'warning'
-    );
-
-    return res.status(200).json({
-      status: 'escalated',
-      ticketId,
-      reason: aiResult.escalationReason
+        logServerActivity(
+          'AI_RESPONSE',
+          'Single Bot Response Sent',
+          `Answered "${userText}" (${whatsappRes.success ? 'Delivered' : 'Meta API Logged'})`,
+          formattedPhone,
+          'success'
+        );
+      } catch (asyncErr) {
+        console.error('[Async Webhook Processing Error]', asyncErr);
+      }
     });
 
   } catch (err: any) {
