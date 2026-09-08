@@ -23,6 +23,8 @@ import {
   Check
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { WhatsAppQrCard } from '../components/common/WhatsAppQrCard';
+
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -118,7 +120,11 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* WHATSAPP WEB QR PAIRING LINKER */}
+      <WhatsAppQrCard />
+
       {/* 2. TOP KPI CARDS (5 CARDS GRID) */}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* KPI 1: Conversations */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs hover:-translate-y-1 hover:shadow-md transition-all duration-200 group">

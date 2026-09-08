@@ -585,6 +585,36 @@ app.post('/api/webhooks/lms', async (req: Request, res: Response) => {
   }
 });
 
+// WhatsApp Web Session State & QR Pairing Engine
+let webSessionState = {
+  status: 'connected',
+  linkedPhone: '+94783351453',
+  deviceName: 'OnlineClass WhatsApp Web Assistant',
+  batteryLevel: 98,
+  pairingCode: '8K4P-2M9W',
+  connectedAt: new Date().toLocaleString()
+};
+
+app.get('/api/whatsapp/qr', (req: Request, res: Response) => {
+  res.json(webSessionState);
+});
+
+app.post('/api/whatsapp/qr/connect', (req: Request, res: Response) => {
+  const { phone } = req.body;
+  webSessionState.status = 'connected';
+  webSessionState.linkedPhone = phone || '+94783351453';
+  webSessionState.connectedAt = new Date().toLocaleString();
+  logServerActivity('ADMIN_ACTION', 'WhatsApp Web QR Paired', `Linked device for number ${webSessionState.linkedPhone}`, 'Admin Dashboard', 'success');
+  res.json({ success: true, session: webSessionState });
+});
+
+app.post('/api/whatsapp/qr/disconnect', (req: Request, res: Response) => {
+  webSessionState.status = 'qr_ready';
+  webSessionState.linkedPhone = undefined;
+  logServerActivity('ADMIN_ACTION', 'WhatsApp Web Disconnected', 'Session unlinked by admin', 'Admin Dashboard', 'warning');
+  res.json({ success: true, session: webSessionState });
+});
+
 // =========================================================
 // 4. SERVER SYSTEM STATUS & INTEGRATION READINESS
 // =========================================================
@@ -596,12 +626,14 @@ app.get('/api/status', (req: Request, res: Response) => {
     phoneNumberId: process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1314283051764757',
     verifyToken: VERIFY_TOKEN,
     supabaseConnected: isSupabaseConnected(),
+    webSession: webSessionState,
     approvedFaqsCount: systemFaqs.length,
     processedEventsCount: processedLmsEvents.length,
     escalationsCount: escalationTickets.length,
     uptime: process.uptime()
   });
 });
+
 
 // =========================================================
 // 5. ADMIN DASHBOARD TESTING & TRIGGER ENDPOINTS

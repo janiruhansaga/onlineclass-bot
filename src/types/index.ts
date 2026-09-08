@@ -150,3 +150,15 @@ export interface SystemSettings {
   supabaseIntegrationReady: boolean;
   supabaseUrlPlaceholder: string;
 }
+
+export interface WhatsAppWebSession {
+  status: 'disconnected' | 'qr_ready' | 'connecting' | 'connected';
+  linkedPhone?: string;
+  deviceName?: string;
+  batteryLevel?: number;
+  qrCodeSvg?: string;
+  pairingCode?: string;
+  connectedAt?: string;
+  lastPingAt?: string;
+}
+

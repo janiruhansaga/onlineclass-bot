@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SystemSettings } from '../types';
+import { WhatsAppQrCard } from '../components/common/WhatsAppQrCard';
+
 
 export const SettingsPage: React.FC = () => {
   const { settings, updateSettings } = useApp();
@@ -107,7 +109,11 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* WHATSAPP WEB QR PAIRING LINKER */}
+        <WhatsAppQrCard />
+
         {/* Card 2: Meta WhatsApp Cloud API Setup */}
+
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
