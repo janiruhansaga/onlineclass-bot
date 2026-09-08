@@ -515,7 +515,7 @@ if (fs.existsSync(distPath)) {
   console.log(`[Production Server] Serving static frontend from: ${distPath}`);
   app.use(express.static(distPath));
 
-  app.get('*', (req: Request, res: Response, next) => {
+  app.use((req: Request, res: Response, next) => {
     if (req.path.startsWith('/api')) {
       return next();
     }
