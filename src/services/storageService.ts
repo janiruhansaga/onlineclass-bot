@@ -28,6 +28,7 @@ const KEYS = {
 
 const DEFAULT_SETTINGS: SystemSettings = {
   botName: 'AI Online Class Assistant',
+  botPhoneNumber: '+94789049004',
   aiStrictnessThreshold: 55,
   defaultGreeting: 'Hello! I am your AI Online Class Assistant. How can I help you with courses, schedules, fees, or LMS portal today?',
   outOfScopeResponse: 'I am strictly grounded in the approved Online Class FAQ Knowledge Base. I could not find a verified answer for your question and have escalated this to a human support agent.',

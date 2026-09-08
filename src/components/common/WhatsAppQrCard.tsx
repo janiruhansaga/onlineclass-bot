@@ -16,6 +16,7 @@ import {
   Check
 } from 'lucide-react';
 import { WhatsAppWebSession } from '../../types';
+import { useApp } from '../../context/AppContext';
 
 interface WhatsAppQrCardProps {
   onSessionChange?: (session: WhatsAppWebSession) => void;
@@ -23,18 +24,29 @@ interface WhatsAppQrCardProps {
 }
 
 export const WhatsAppQrCard: React.FC<WhatsAppQrCardProps> = ({ onSessionChange, compact = false }) => {
+  const { settings, updateSettings, addActivityLog } = useApp();
+
+  const savedBotPhone = settings.botPhoneNumber || localStorage.getItem('onlineclass_bot_phone') || '+94789049004';
+
   const [activeTab, setActiveTab] = useState<'qr' | 'pairing'>('qr');
   const [status, setStatus] = useState<'disconnected' | 'qr_ready' | 'connecting' | 'connected'>('connected');
-  const [linkedPhone, setLinkedPhone] = useState('+94789049004');
+  const [linkedPhone, setLinkedPhone] = useState(savedBotPhone);
   const [batteryLevel, setBatteryLevel] = useState(98);
   const [countdown, setCountdown] = useState(48);
   const [isScanning, setIsScanning] = useState(false);
-  const [pairingPhoneInput, setPairingPhoneInput] = useState('+94789049004');
+  const [pairingPhoneInput, setPairingPhoneInput] = useState(savedBotPhone);
   const [generatedPairingCode, setGeneratedPairingCode] = useState('8K4P-2M9W');
   const [copiedCode, setCopiedCode] = useState(false);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [tempPhone, setTempPhone] = useState('+94789049004');
+  const [tempPhone, setTempPhone] = useState(savedBotPhone);
 
+  useEffect(() => {
+    if (settings.botPhoneNumber) {
+      setLinkedPhone(settings.botPhoneNumber);
+      setTempPhone(settings.botPhoneNumber);
+      setPairingPhoneInput(settings.botPhoneNumber);
+    }
+  }, [settings.botPhoneNumber]);
 
   // Countdown timer for QR code refresh
   useEffect(() => {
@@ -53,8 +65,13 @@ export const WhatsAppQrCard: React.FC<WhatsAppQrCardProps> = ({ onSessionChange,
   const handleSimulateConnect = () => {
     setIsScanning(true);
     setStatus('connecting');
-    const targetPhone = tempPhone || pairingPhoneInput || '+94789049004';
+    const targetPhone = tempPhone || pairingPhoneInput || savedBotPhone;
     setLinkedPhone(targetPhone);
+
+    // Save permanently to settings & localStorage
+    updateSettings({ ...settings, botPhoneNumber: targetPhone });
+    localStorage.setItem('onlineclass_bot_phone', targetPhone);
+
     setTimeout(() => {
       setStatus('connected');
       setIsScanning(false);
@@ -72,10 +89,32 @@ export const WhatsAppQrCard: React.FC<WhatsAppQrCardProps> = ({ onSessionChange,
 
   const handleSaveBotPhone = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tempPhone.trim()) return;
-    setLinkedPhone(tempPhone.trim());
+    const newPhone = tempPhone.trim();
+    if (!newPhone) return;
+
+    setLinkedPhone(newPhone);
+    setPairingPhoneInput(newPhone);
     setIsEditingPhone(false);
+
+    // Save permanently across browser refresh
+    updateSettings({ ...settings, botPhoneNumber: newPhone });
+    localStorage.setItem('onlineclass_bot_phone', newPhone);
+
+    fetch('/api/whatsapp/qr/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: newPhone })
+    }).catch(() => {});
+
+    addActivityLog(
+      'SETTINGS_CHANGE',
+      'Bot WhatsApp Number Updated',
+      `Updated Bot Phone Number to ${newPhone}`,
+      newPhone,
+      'success'
+    );
   };
+
 
 
   const handleDisconnect = () => {

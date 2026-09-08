@@ -139,6 +139,7 @@ export interface GroundingCheckResult {
 
 export interface SystemSettings {
   botName: string;
+  botPhoneNumber?: string;
   aiStrictnessThreshold: number; // e.g. 60%
   defaultGreeting: string;
   outOfScopeResponse: string;
